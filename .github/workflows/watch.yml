@@ -1,0 +1,30 @@
+# Save as .github/workflows/watch.yml in your repo
+name: movie-watch
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write   # lets the job disable itself after the alert
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: Check shows
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python movie.py --once
+      - name: Stop after first alert
+        if: ${{ hashFiles('.alert_sent') != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow disable "movie-watch" --repo "$GITHUB_REPOSITORY"
+
